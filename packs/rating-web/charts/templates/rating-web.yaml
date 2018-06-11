@@ -1,51 +1,25 @@
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
-  name: "{{.Values.web.deployment}}"
+  name: {{ template "fullname" . }}
+  labels:
+    draft: {{ default "draft-app" .Values.draft }}
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}"
 spec:
-  replicas: {{ default 1 .Values.web.replicas }}
+  replicas: {{ .Values.replicaCount }}
   template:
     metadata:
+      annotations:
+        buildID: {{ .Values.buildID }}
       labels:
-        app: "{{.Values.web.name}}"
-        version: "{{.Values.web.versionLabel}}"
+        draft: {{ default "draft-app" .Values.draft }}
+        app: {{ template "fullname" . }}
     spec:
       containers:
-      - name: "{{.Values.web.name}}"
-        image: "{{.Values.web.image}}:{{.Values.web.imageTag}}"
-        env:
-        - name: API
-          value: http://rating-api.default.svc.cluster.local:3000/
-        - name: KUBE_NODE_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: spec.nodeName
-        - name: KUBE_POD_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.name
-        - name: KUBE_POD_IP
-          valueFrom:
-            fieldRef:
-              fieldPath: status.podIP
-        resources:
-          requests:
-            cpu: "100m"
-        imagePullPolicy: Always
+      - name: {{ .Chart.Name }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
         ports:
-        - containerPort: 8080
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: "{{.Values.web.name}}"
-  labels:
-    app: "{{.Values.web.name}}"
-spec:
-  type: "{{.Values.web.serviceType}}"
-  ports:
-  - name: http
-    port: 8080
-    targetPort: 8080
-  selector:
-    app: "{{.Values.web.name}}"
+        - containerPort: {{ .Values.service.internalPort }}
+        resources:
+{{ toYaml .Values.resources | indent 12 }}
